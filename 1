@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Bring down the wireless interface
+ifconfig ath0 down
+
+# Remove existing modules
+rmmod wlan_wep ath_rate_sample ath_rate_onoe ath_pci wlan ath_hal 2>/dev/null
+
+# Remove existing module files
+find /lib/modules -name 'ath*'  -exec rm -v {} \; 2>/dev/null
+find /lib/modules -name 'wlan*' -exec rm -v {} \; 2>/dev/null
+
+# Checkout the old MadWifi branch
+svn checkout http://svn.madwifi-project.org/branches/madwifi-old/ madwifi-old
+
+# Download the patch
+wget http://patches.aircrack-ng.org/madwifi-old-r1417.patch
+
+# Apply the patch
+cd madwifi-old
+patch -Np1 -i ../madwifi-old-r1417.patch
+
+# Compile and install the driver
+KERNEL_VERSION=$(uname -r)
+make KERNELPATH=/usr/src/linux-${KERNEL_VERSION}
+make install KERNELPATH=/usr/src/linux-${KERNEL_VERSION}
+
+# Update module dependencies
+depmod -ae
+
+# Load the new module
+modprobe ath_pci
+
+echo "MadWifi driver installed and loaded successfully."
